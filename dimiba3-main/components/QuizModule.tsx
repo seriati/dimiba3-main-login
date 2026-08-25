@@ -57,7 +57,11 @@ function ConfettiExplosion() {
   );
 }
 
-export default function QuizModule() {
+interface QuizModuleProps {
+  onComplete?: (score: number, correctAnswers: number, totalQuestions: number) => void;
+}
+
+export default function QuizModule({ onComplete }: QuizModuleProps) {
   const [step, setStep] = useState<'intro' | 'playing' | 'result'>('intro');
   const [currentQuestionIdx, setCurrentQuestionIdx] = useState(0);
   const [selectedAnswers, setSelectedAnswers] = useState<number[]>([]); // stores index of answers chosen for each question
@@ -117,6 +121,12 @@ export default function QuizModule() {
   };
 
   const scorePercentage = Math.round((userScore / QUIZ_DATA.length) * 100);
+
+  useEffect(() => {
+    if (step === 'result') {
+      onComplete?.(scorePercentage, userScore, QUIZ_DATA.length);
+    }
+  }, [step]);
 
   return (
     <div className="max-w-2xl mx-auto relative">

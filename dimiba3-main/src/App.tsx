@@ -5,9 +5,9 @@
 
 import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
-import { 
-  Home, BookOpen, Coins, BrainCircuit, BookMarked, Target, Bell, Sparkles, Volume2, VolumeX, Play, Pause, ChevronRight, HelpCircle, AlertCircle, ShoppingBag, Award, CheckCircle, User, Pencil
-} from 'lucide-react';
+import { addDoc, collection, serverTimestamp } from 'firebase/firestore';
+import { onAuthStateChanged, signOut, User as FirebaseUser } from 'firebase/auth';
+import { Home, BookOpen, Coins, BrainCircuit, BookMarked, Target, Bell, Sparkles, Volume2, VolumeX, Play, Pause, ChevronRight, HelpCircle, AlertCircle, ShoppingBag, Award, CheckCircle, User, Pencil, LogOut, ShieldCheck } from 'lucide-react';
 
 import { ActiveTab, StoryChunk } from './types';
 import { STORY_CHUNKS } from './data';
@@ -16,6 +16,11 @@ import { playClickSound, playSuccessSound, playErrorSound, playFanfareSound } fr
 import StoryIllustrations from '../components/StoryIllustrations.tsx';
 import CelenganGame from '../components/CelenganGame.tsx';
 import QuizModule from '../components/QuizModule.tsx';
+import LoginScreen from '../components/LoginScreen.tsx';
+import AdminDashboard from '../components/AdminDashboard.tsx';
+import { auth, db, firebaseConfigured } from './firebase';
+
+const ADMIN_EMAILS = ['f2211251024@student.untan.ac.i', 'f2211251024@student.untan.ac.id'];
 
 export default function App() {
   const [activeTab, setActiveTab] = useState<ActiveTab>('home');
@@ -26,12 +31,44 @@ export default function App() {
   const [selectedMiniAns, setSelectedMiniAns] = useState<number | null>(null);
   const [showGuide, setShowGuide] = useState(true);
   const [developerImageLoaded, setDeveloperImageLoaded] = useState(false);
+  const [currentUser, setCurrentUser] = useState<FirebaseUser | null>(null);
+  const [authLoading, setAuthLoading] = useState(true);
+  const [authError, setAuthError] = useState('');
 
   // Audio speech synthesis reading support
   const [isSpeaking, setIsSpeaking] = useState(false);
   const [speechUtterance, setSpeechUtterance] = useState<SpeechSynthesisUtterance | null>(null);
 
   const activeChapter = STORY_CHUNKS[chapterIdx];
+  const isAdmin = currentUser?.email ? ADMIN_EMAILS.includes(currentUser.email.toLowerCase()) : false;
+
+  useEffect(() => {
+    if (!auth) {
+      setAuthLoading(false);
+      return;
+    }
+    return onAuthStateChanged(auth, (user) => {
+      setCurrentUser(user);
+      setAuthLoading(false);
+    });
+  }, []);
+
+  const handleQuizComplete = async (score: number, correctAnswers: number, totalQuestions: number) => {
+    if (!currentUser || !db) return;
+    try {
+      await addDoc(collection(db, 'quizResults'), {
+        studentId: currentUser.uid,
+        name: currentUser.displayName || 'Siswa',
+        email: currentUser.email,
+        score,
+        correctAnswers,
+        totalQuestions,
+        completedAt: serverTimestamp(),
+      });
+    } catch {
+      setAuthError('Nilai selesai, tetapi belum berhasil disimpan ke Firebase.');
+    }
+  };
 
   // Load digital savings balance
   useEffect(() => {
@@ -581,7 +618,10 @@ export default function App() {
         return <CelenganGame />;
 
       case 'kuis':
-        return <QuizModule />;
+        return <QuizModule onComplete={handleQuizComplete} />;
+
+      case 'admin':
+        return isAdmin ? <AdminDashboard /> : null;
 
       case 'tujuan':
         return (
@@ -753,6 +793,14 @@ Terima kasih telah menggunakan media pembelajaran ini. Semoga dapat memberikan p
     }
   };
 
+  if (authLoading) {
+    return <div className="min-h-screen bg-slate-50 flex items-center justify-center text-sm font-bold text-slate-500">Menyiapkan login...</div>;
+  }
+
+  if (!currentUser) {
+    return <LoginScreen onError={setAuthError} error={authError || (!firebaseConfigured ? 'Firebase belum aktif. Isi konfigurasi Firebase terlebih dahulu.' : '')} />;
+  }
+
   return (
     <div className="flex min-h-screen bg-slate-50 font-sans text-slate-800">
       
@@ -772,7 +820,7 @@ Terima kasih telah menggunakan media pembelajaran ini. Semoga dapat memberikan p
 
           {/* Navigation elements links */}
           <nav className="space-y-1.5">
-            {NAV_ITEMS.map((item) => {
+            {[...NAV_ITEMS, ...(isAdmin ? [{ id: 'admin', label: 'Data Siswa', icon: ShieldCheck, color: 'text-indigo-500 bg-indigo-50 border-indigo-100 hover:bg-indigo-100/35' }] : [])].map((item) => {
               const Icon = item.icon;
               const isActive = activeTab === item.id;
               
@@ -798,7 +846,7 @@ Terima kasih telah menggunakan media pembelajaran ini. Semoga dapat memberikan p
 
       {/* 2. BOTTOM NAV PANEL (MOBILE RESPONSIVE SCREEN) */}
       <nav className="md:hidden fixed bottom-3 left-4 right-4 bg-slate-900 border border-slate-800 text-white flex justify-around p-2.5 rounded-[2rem] z-50 shadow-2xl">
-        {NAV_ITEMS.map((item) => {
+        {[...NAV_ITEMS, ...(isAdmin ? [{ id: 'admin', label: 'Data Siswa', icon: ShieldCheck, color: 'text-indigo-500 bg-indigo-50 border-indigo-100 hover:bg-indigo-100/35' }] : [])].map((item) => {
           const Icon = item.icon;
           const isActive = activeTab === item.id;
           
@@ -842,6 +890,7 @@ Terima kasih telah menggunakan media pembelajaran ini. Semoga dapat memberikan p
               <div className="bg-amber-100 text-amber-800 border border-amber-300 px-3.5 py-1.5 rounded-full font-black font-mono tracking-tight animate-pulse flex items-center gap-1">
                 <span>💰</span> {getEjaanRupiah(savingsAmt)}
               </div>
+              <button onClick={() => void signOut(auth!)} title="Keluar" className="p-2 rounded-xl bg-white border border-slate-200 text-slate-500 hover:text-rose-500 cursor-pointer"><LogOut className="w-4 h-4" /></button>
             </div>
           </header>
 
