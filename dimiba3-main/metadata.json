@@ -1,0 +1,6 @@
+{
+  "name": "DIMIBA! - Media Pembelajaran Interaktif",
+  "description": "Media Pembelajaran Interaktif Kelas IV SD Bab 5: Bertukar dan Membayar. Menyajikan materi komik kancil, fabel sejarah uang, serta game edukatif pendamping.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
