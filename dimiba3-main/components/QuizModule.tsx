@@ -349,7 +349,7 @@ export default function QuizModule({ onComplete, attemptsRemaining = 1 }: QuizMo
               <div className="flex flex-col sm:flex-row gap-3 pt-2">
                 <button
                   onClick={handleStartQuiz}
-                  className="flex-1 bg-primary hover:bg-sky-600 text-white font-black py-4 rounded-xl shadow-md transition-all flex items-center justify-center gap-2 cursor-pointer"
+                  className="flex-1 bg-primary hover:bg-sky-600 text-blue font-black py-4 rounded-xl shadow-md transition-all flex items-center justify-center gap-2 cursor-pointer"
                 >
                   <RefreshCw className="w-4 h-4" /> Ulangi Kuis
                 </button>
