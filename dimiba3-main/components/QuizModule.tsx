@@ -3,7 +3,7 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import { BrainCircuit, Play, CheckCircle2, XCircle, RefreshCw, Volume2, VolumeX, ArrowRight, ClipboardCheck } from 'lucide-react';
 import { QUIZ_DATA } from '../src/data';
@@ -59,9 +59,10 @@ function ConfettiExplosion() {
 
 interface QuizModuleProps {
   onComplete?: (score: number, correctAnswers: number, totalQuestions: number) => void;
+  attemptsRemaining?: number;
 }
 
-export default function QuizModule({ onComplete }: QuizModuleProps) {
+export default function QuizModule({ onComplete, attemptsRemaining = 1 }: QuizModuleProps) {
   const [step, setStep] = useState<'intro' | 'playing' | 'result'>('intro');
   const [currentQuestionIdx, setCurrentQuestionIdx] = useState(0);
   const [selectedAnswers, setSelectedAnswers] = useState<number[]>([]); // stores index of answers chosen for each question
@@ -69,6 +70,7 @@ export default function QuizModule({ onComplete }: QuizModuleProps) {
   const [showAnswerFeedback, setShowAnswerFeedback] = useState(false);
   const [lastSelectedIdx, setLastSelectedIdx] = useState<number | null>(null);
   const [isMuted, setIsMuted] = useState(!isSoundEnabled());
+  const resultSubmitted = useRef(false);
 
   const currentQuestion = QUIZ_DATA[currentQuestionIdx];
 
@@ -80,6 +82,7 @@ export default function QuizModule({ onComplete }: QuizModuleProps) {
   };
 
   const handleStartQuiz = () => {
+    if (attemptsRemaining <= 0) return;
     setIsMuted(!isSoundEnabled());
     playClickSound();
     setStep('playing');
@@ -88,6 +91,7 @@ export default function QuizModule({ onComplete }: QuizModuleProps) {
     setUserScore(0);
     setShowAnswerFeedback(false);
     setLastSelectedIdx(null);
+    resultSubmitted.current = false;
   };
 
   const handleAnswerClick = (index: number) => {
@@ -123,7 +127,8 @@ export default function QuizModule({ onComplete }: QuizModuleProps) {
   const scorePercentage = Math.round((userScore / QUIZ_DATA.length) * 100);
 
   useEffect(() => {
-    if (step === 'result') {
+    if (step === 'result' && !resultSubmitted.current) {
+      resultSubmitted.current = true;
       onComplete?.(scorePercentage, userScore, QUIZ_DATA.length);
     }
   }, [step]);
@@ -149,9 +154,16 @@ export default function QuizModule({ onComplete }: QuizModuleProps) {
       </div>
 
       <AnimatePresence mode="wait">
+        {attemptsRemaining <= 0 && step === 'intro' && (
+          <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="bg-amber-50 border border-amber-200 rounded-3xl p-8 text-center space-y-3">
+            <div className="text-4xl">🔒</div>
+            <h3 className="font-baloo font-black text-2xl text-amber-900">Kesempatan kuis sudah habis</h3>
+            <p className="text-sm text-amber-800 font-semibold">Tunggu guru memberikan kesempatan mengisi ulang.</p>
+          </motion.div>
+        )}
         
         {/* VIEW 1: INTRO STATE */}
-        {step === 'intro' && (
+        {step === 'intro' && attemptsRemaining > 0 && (
           <motion.div
             key="intro"
             initial={{ scale: 0.95, opacity: 0 }}

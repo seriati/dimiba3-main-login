@@ -1,4 +1,5 @@
 import { LogIn, ShieldCheck, Sparkles } from 'lucide-react';
+import { useState } from 'react';
 import { signInWithPopup } from 'firebase/auth';
 import { auth, firebaseConfigured, googleProvider } from '../src/firebase';
 
@@ -8,7 +9,14 @@ interface LoginScreenProps {
 }
 
 export default function LoginScreen({ onError, error }: LoginScreenProps) {
+  const [studentName, setStudentName] = useState('');
+
   const handleLogin = async () => {
+    const trimmedName = studentName.trim();
+    if (trimmedName.length < 2) {
+      onError('Tulis nama kamu terlebih dahulu.');
+      return;
+    }
     if (!auth || !firebaseConfigured) {
       onError('Firebase belum dikonfigurasi. Isi semua VITE_FIREBASE_* di file .env.local.');
       return;
@@ -16,6 +24,7 @@ export default function LoginScreen({ onError, error }: LoginScreenProps) {
 
     try {
       onError('');
+      localStorage.setItem('dimiba_student_name', trimmedName);
       await signInWithPopup(auth, googleProvider);
     } catch (loginError) {
       const code = loginError instanceof Error ? loginError.message : '';
@@ -37,6 +46,10 @@ export default function LoginScreen({ onError, error }: LoginScreenProps) {
           <p className="flex items-center gap-2 text-sm font-black text-sky-800"><ShieldCheck className="w-4 h-4" /> Login sesuai peran</p>
           <p className="text-xs text-slate-600 leading-relaxed">Siswa masuk dengan Gmail biasa. Akun admin khusus dapat melihat hasil uji kompetensi seluruh siswa.</p>
         </div>
+        <label className="block text-left space-y-2">
+          <span className="text-sm font-black text-slate-700">Nama kamu</span>
+          <input value={studentName} onChange={(event) => setStudentName(event.target.value)} placeholder="Contoh: Budi Santoso" maxLength={60} className="w-full rounded-xl border border-slate-200 px-4 py-3 text-sm font-semibold outline-none focus:border-sky-400" />
+        </label>
         {error && <p className="rounded-xl bg-rose-50 border border-rose-100 p-3 text-xs font-bold text-rose-700">{error}</p>}
         <button onClick={handleLogin} className="w-full rounded-2xl bg-slate-900 hover:bg-slate-800 text-white py-4 font-black flex items-center justify-center gap-3 transition-colors cursor-pointer">
           <LogIn className="w-5 h-5" /> Masuk dengan Google

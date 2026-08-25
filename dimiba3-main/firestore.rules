@@ -1,13 +1,39 @@
 rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
+    function isAdmin() {
+      return request.auth != null
+        && request.auth.token.email == 'f2211251024@student.untan.ac.id';
+    }
+
+    match /settings/{settingId} {
+      allow read: if request.auth != null;
+      allow write: if isAdmin();
+    }
+
+    match /studentProfiles/{studentId} {
+      allow read: if isAdmin() || (request.auth != null && request.auth.uid == studentId);
+      allow create: if request.auth != null
+        && request.auth.uid == studentId
+        && request.resource.data.keys().hasOnly(['displayName', 'attemptsRemaining', 'updatedAt'])
+        && ((!exists(/databases/$(database)/documents/settings/quiz)
+          && request.resource.data.attemptsRemaining == 1)
+          || request.resource.data.attemptsRemaining == get(/databases/$(database)/documents/settings/quiz).data.maxAttempts);
+      allow update: if isAdmin() || (
+        request.auth != null
+        && request.auth.uid == studentId
+        && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['displayName', 'attemptsRemaining', 'updatedAt'])
+        && request.resource.data.attemptsRemaining == resource.data.attemptsRemaining - 1
+      );
+      allow delete: if isAdmin();
+    }
+
     match /quizResults/{resultId} {
       allow create: if request.auth != null
-        && request.resource.data.studentId == request.auth.uid;
-      allow read: if request.auth != null
-        && (request.auth.token.email == 'f2211251024@student.untan.ac.i'
-          || request.auth.token.email == 'f2211251024@student.untan.ac.id');
-      allow update, delete: if false;
+        && request.resource.data.studentId == request.auth.uid
+        && get(/databases/$(database)/documents/studentProfiles/$(request.auth.uid)).data.attemptsRemaining > 0;
+      allow read: if isAdmin() || (request.auth != null && resource.data.studentId == request.auth.uid);
+      allow update, delete: if isAdmin();
     }
   }
 }

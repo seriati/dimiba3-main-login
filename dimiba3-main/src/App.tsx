@@ -5,7 +5,7 @@
 
 import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
-import { addDoc, collection, serverTimestamp } from 'firebase/firestore';
+import { collection, doc, getDoc, runTransaction, serverTimestamp } from 'firebase/firestore';
 import { onAuthStateChanged, signOut, User as FirebaseUser } from 'firebase/auth';
 import { Home, BookOpen, Coins, BrainCircuit, BookMarked, Target, Bell, Sparkles, Volume2, VolumeX, Play, Pause, ChevronRight, HelpCircle, AlertCircle, ShoppingBag, Award, CheckCircle, User, Pencil, LogOut, ShieldCheck } from 'lucide-react';
 
@@ -20,7 +20,7 @@ import LoginScreen from '../components/LoginScreen.tsx';
 import AdminDashboard from '../components/AdminDashboard.tsx';
 import { auth, db, firebaseConfigured } from './firebase';
 
-const ADMIN_EMAILS = ['f2211251024@student.untan.ac.i', 'f2211251024@student.untan.ac.id'];
+const ADMIN_EMAIL = 'f2211251024@student.untan.ac.id';
 
 export default function App() {
   const [activeTab, setActiveTab] = useState<ActiveTab>('home');
@@ -34,13 +34,16 @@ export default function App() {
   const [currentUser, setCurrentUser] = useState<FirebaseUser | null>(null);
   const [authLoading, setAuthLoading] = useState(true);
   const [authError, setAuthError] = useState('');
+  const [studentName, setStudentName] = useState('');
+  const [attemptsRemaining, setAttemptsRemaining] = useState(1);
+  const [maxAttempts, setMaxAttempts] = useState(1);
 
   // Audio speech synthesis reading support
   const [isSpeaking, setIsSpeaking] = useState(false);
   const [speechUtterance, setSpeechUtterance] = useState<SpeechSynthesisUtterance | null>(null);
 
   const activeChapter = STORY_CHUNKS[chapterIdx];
-  const isAdmin = currentUser?.email ? ADMIN_EMAILS.includes(currentUser.email.toLowerCase()) : false;
+  const isAdmin = currentUser?.email?.toLowerCase() === ADMIN_EMAIL;
 
   useEffect(() => {
     if (!auth) {
@@ -53,18 +56,55 @@ export default function App() {
     });
   }, []);
 
+  useEffect(() => {
+    const loadStudentProfile = async () => {
+      if (!currentUser || !db || isAdmin) return;
+      const profileRef = doc(db, 'studentProfiles', currentUser.uid);
+      const profileSnapshot = await getDoc(profileRef);
+      if (profileSnapshot.exists()) {
+        const profile = profileSnapshot.data();
+        setStudentName(profile.displayName || localStorage.getItem('dimiba_student_name') || '');
+        setAttemptsRemaining(profile.attemptsRemaining ?? 1);
+      } else {
+        const name = localStorage.getItem('dimiba_student_name') || '';
+        if (!name) {
+          setAuthError('Nama peserta didik belum diisi. Keluar lalu masuk kembali dengan nama kamu.');
+          await signOut(auth!);
+          return;
+        }
+        const settingsSnapshot = await getDoc(doc(db, 'settings', 'quiz'));
+        const configuredAttempts = settingsSnapshot.data()?.maxAttempts ?? 1;
+        await runTransaction(db, async (transaction) => {
+          transaction.set(profileRef, { displayName: name, attemptsRemaining: configuredAttempts, updatedAt: serverTimestamp() });
+        });
+        setStudentName(name);
+        setAttemptsRemaining(configuredAttempts);
+      }
+    };
+    void loadStudentProfile();
+  }, [currentUser, isAdmin]);
+
   const handleQuizComplete = async (score: number, correctAnswers: number, totalQuestions: number) => {
     if (!currentUser || !db) return;
     try {
-      await addDoc(collection(db, 'quizResults'), {
-        studentId: currentUser.uid,
-        name: currentUser.displayName || 'Siswa',
-        email: currentUser.email,
-        score,
-        correctAnswers,
-        totalQuestions,
-        completedAt: serverTimestamp(),
+      const profileRef = doc(db, 'studentProfiles', currentUser.uid);
+      await runTransaction(db, async (transaction) => {
+        const profileSnapshot = await transaction.get(profileRef);
+        const remaining = profileSnapshot.data()?.attemptsRemaining ?? 0;
+        if (remaining <= 0) throw new Error('NO_ATTEMPTS');
+        const resultRef = doc(collection(db, 'quizResults'));
+        transaction.set(resultRef, {
+          studentId: currentUser.uid,
+          name: studentName || 'Siswa',
+          email: currentUser.email,
+          score,
+          correctAnswers,
+          totalQuestions,
+          completedAt: serverTimestamp(),
+        });
+        transaction.update(profileRef, { attemptsRemaining: remaining - 1, updatedAt: serverTimestamp() });
       });
+      setAttemptsRemaining((remaining) => Math.max(remaining - 1, 0));
     } catch {
       setAuthError('Nilai selesai, tetapi belum berhasil disimpan ke Firebase.');
     }
@@ -618,7 +658,7 @@ export default function App() {
         return <CelenganGame />;
 
       case 'kuis':
-        return <QuizModule onComplete={handleQuizComplete} />;
+        return <QuizModule onComplete={handleQuizComplete} attemptsRemaining={attemptsRemaining} />;
 
       case 'admin':
         return isAdmin ? <AdminDashboard /> : null;
@@ -881,7 +921,7 @@ Terima kasih telah menggunakan media pembelajaran ini. Semoga dapat memberikan p
             </div>
 
             <div className="hidden md:block">
-              <p className="text-slate-400 text-xs font-extrabold uppercase tracking-widest">Selamat Datang, Kelas 4 SD!</p>
+              <p className="text-slate-400 text-xs font-extrabold uppercase tracking-widest">Selamat Datang, {isAdmin ? 'Guru' : studentName || 'Siswa'}!</p>
               <h2 className="text-lg font-black text-slate-700 mt-0.5">Harimu indah untuk belajar! 🌸</h2>
             </div>
 
