@@ -99,9 +99,23 @@ export default function AdminDashboard() {
     try {
       const removeStudent = httpsCallable(functions, 'deleteStudentAccount');
       await removeStudent({ studentId: result.studentId });
+      setError('');
       await loadResults();
-    } catch {
-      setError('Akun gagal dihapus. Deploy Firebase Functions terlebih dahulu.');
+    } catch (error) {
+      const message = error instanceof Error ? error.message : 'Terjadi kesalahan';
+      const lowerMessage = message.toLowerCase();
+
+      if (lowerMessage.includes('permission') || lowerMessage.includes('admin')) {
+        setError('Akun gagal dihapus. Pastikan Anda login sebagai admin yang berwenang.');
+        return;
+      }
+
+      if (lowerMessage.includes('not found') || lowerMessage.includes('functions') || lowerMessage.includes('deploy')) {
+        setError('Akun gagal dihapus. Deploy Firebase Functions terlebih dahulu.');
+        return;
+      }
+
+      setError(`Akun gagal dihapus: ${message}`);
     } finally {
       setWorkingId('');
     }

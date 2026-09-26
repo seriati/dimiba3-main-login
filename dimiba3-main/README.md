@@ -20,3 +20,31 @@ Firebase Hosting akan memberikan URL `https://PROJECT_ID.web.app` setelah deploy
 
 Login Google biasa akan masuk sebagai siswa. Akun `f2211251024@student.untan.ac.i` dan variasi alamat yang tertulis di profil aplikasi (`.ac.id`) akan mendapat menu **Data Siswa**. Hasil uji kompetensi tersimpan di koleksi `quizResults` dan hanya dapat dibaca akun admin melalui Firestore Rules.
 
+## Hapus akun siswa tanpa Firebase Functions
+
+Kalau project Firebase tidak mau di-upgrade ke Blaze plan, kamu masih bisa menghapus akun siswa via script admin lokal.
+
+1. Buat service account di Google Cloud / Firebase.
+2. Beri role Firebase Authentication Admin.
+3. Simpan file JSON di folder aman, misalnya `secrets/firebase-admin.json`.
+4. Jalankan:
+
+```powershell
+cd 'D:\dimiba3-main-login\dimiba3-main'
+$env:FIREBASE_SERVICE_ACCOUNT_PATH = 'D:\dimiba3-main-login\dimiba3-main\secrets\firebase-admin.json'
+node functions\scripts\delete-student.js <UID_SISWA>
+```
+
+Atau pakai email:
+
+```powershell
+node functions\scripts\delete-student.js siswa@example.com
+```
+
+Script ini akan:
+- menghapus user dari Firebase Authentication
+- menghapus semua dokumen di `quizResults` milik siswa
+- menghapus dokumen di `studentProfiles/<uid>`
+
+Jangan commit file service account ke Git.
+

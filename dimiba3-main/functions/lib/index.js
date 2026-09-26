@@ -7,13 +7,19 @@ const auth_1 = require("firebase-admin/auth");
 const firestore_1 = require("firebase-admin/firestore");
 if (!(0, app_1.getApps)().length)
     (0, app_1.initializeApp)();
-const ADMIN_EMAIL = 'f2211251024@student.untan.ac.id';
+const ADMIN_EMAILS = [
+    'izoryroman.r@gmail.com',
+    'f2211251024@student.untan.ac.id',
+];
 exports.deleteStudentAccount = (0, https_1.onCall)({ region: 'asia-southeast1' }, async (request) => {
-    if (request.auth?.token.email !== ADMIN_EMAIL) {
+    const requesterEmail = request.auth?.token?.email?.toLowerCase();
+    const isAllowedAdmin = requesterEmail ? ADMIN_EMAILS.some((email) => requesterEmail === email.toLowerCase()) : false;
+    if (!isAllowedAdmin) {
         throw new https_1.HttpsError('permission-denied', 'Hanya admin yang boleh menghapus akun.');
     }
+    const requesterUid = request.auth?.uid;
     const studentId = typeof request.data?.studentId === 'string' ? request.data.studentId : '';
-    if (!studentId || studentId === request.auth.uid) {
+    if (!studentId || studentId === requesterUid) {
         throw new https_1.HttpsError('invalid-argument', 'ID siswa tidak valid.');
     }
     const firestore = (0, firestore_1.getFirestore)();

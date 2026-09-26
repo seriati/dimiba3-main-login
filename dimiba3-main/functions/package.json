@@ -3,7 +3,10 @@
   "private": true,
   "engines": { "node": "20" },
   "main": "lib/index.js",
-  "scripts": { "build": "tsc" },
+  "scripts": {
+    "build": "tsc",
+    "delete:student": "node scripts/delete-student.js"
+  },
   "dependencies": {
     "firebase-admin": "^13.4.0",
     "firebase-functions": "^6.3.2"

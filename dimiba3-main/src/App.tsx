@@ -20,7 +20,10 @@ import LoginScreen from '../components/LoginScreen.tsx';
 import AdminDashboard from '../components/AdminDashboard.tsx';
 import { auth, db, firebaseConfigured } from './firebase';
 
-const ADMIN_EMAIL = 'f2211251024@student.untan.ac.id';
+const ADMIN_EMAILS = [
+  'izoryroman.r@gmail.com',
+  'f2211251024@student.untan.ac.id',
+];
 
 export default function App() {
   const [activeTab, setActiveTab] = useState<ActiveTab>('home');
@@ -43,7 +46,7 @@ export default function App() {
   const [speechUtterance, setSpeechUtterance] = useState<SpeechSynthesisUtterance | null>(null);
 
   const activeChapter = STORY_CHUNKS[chapterIdx];
-  const isAdmin = currentUser?.email?.toLowerCase() === ADMIN_EMAIL;
+  const isAdmin = currentUser?.email ? ADMIN_EMAILS.some((email) => currentUser.email?.toLowerCase() === email.toLowerCase()) : false;
 
   useEffect(() => {
     if (!auth) {
