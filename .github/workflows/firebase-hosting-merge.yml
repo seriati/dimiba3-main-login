@@ -11,14 +11,20 @@ jobs:
   build_and_deploy:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+  - uses: actions/checkout@v4
 
-      - run: npm run build
-        working-directory: ./dimiba3-main
+  - run: npm ci
+    working-directory: ./dimiba3-main
 
-      - uses: FirebaseExtended/action-hosting-deploy@v0
-        with:
-          repoToken: ${{ secrets.GITHUB_TOKEN }}
-          firebaseServiceAccount: ${{ secrets.FIREBASE_SERVICE_ACCOUNT_DIMIBALOGIN }}
-          channelId: live
-          projectId: dimibalogin
+  - run: chmod +x node_modules/.bin/vite
+    working-directory: ./dimiba3-main
+
+  - run: npm run build
+    working-directory: ./dimiba3-main
+
+  - uses: FirebaseExtended/action-hosting-deploy@v0
+    with:
+      repoToken: ${{ secrets.GITHUB_TOKEN }}
+      firebaseServiceAccount: ${{ secrets.FIREBASE_SERVICE_ACCOUNT_DIMIBALOGIN }}
+      channelId: live
+      projectId: dimibalogin
