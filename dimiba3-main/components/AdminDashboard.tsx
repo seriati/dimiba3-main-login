@@ -111,7 +111,7 @@ export default function AdminDashboard() {
       }
 
       if (lowerMessage.includes('not found') || lowerMessage.includes('functions') || lowerMessage.includes('deploy')) {
-        setError('Akun gagal dihapus. Deploy Firebase Functions terlebih dahulu.');
+        setError('Akun gagal dihapus. Pastikan Cloud Function aktif dan data siswa yang dipilih valid.');
         return;
       }
 
